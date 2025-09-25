@@ -611,7 +611,7 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    privileged: true
+
   # worker service
   # The Celery worker for processing the queue.
   worker:
@@ -638,7 +638,6 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    privileged: true
 
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
@@ -685,8 +684,6 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-    privileged: true
-
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -719,7 +716,6 @@ services:
       interval: 1s
       timeout: 3s
       retries: 60
-    privileged: true
 
   # The redis cache.
   redis:
@@ -762,7 +758,6 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8194/health"]
     networks:
       - ssrf_proxy_network
-    privileged: true
 
   # plugin daemon
   plugin_daemon:
@@ -824,7 +819,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    privileged: true
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -851,7 +845,6 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    privileged: true
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
@@ -872,7 +865,6 @@ services:
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: ["/docker-entrypoint.sh"]
     command: ["tail", "-f", "/dev/null"]
-    privileged: true
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -918,7 +910,6 @@ services:
     ports:
       - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
       - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
-    privileged: true
 
   # The Weaviate vector store.
   weaviate:
@@ -943,7 +934,6 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
-    privileged: true
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
@@ -956,7 +946,7 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-  privileged: true
+
   # The Couchbase vector store.
   couchbase-server:
     build: ./couchbase-server
@@ -993,7 +983,7 @@ services:
       retries: 10
       start_period: 30s
       timeout: 10s
-    privileged: true
+
   # The pgvector vector database.
   pgvector:
     image: pgvector/pgvector:pg16
@@ -1020,7 +1010,7 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
-    privileged: true
+
   # get image from https://www.vastdata.com.cn/
   vastbase:
     image: vastdata/vastbase-vector
@@ -1044,7 +1034,7 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
-    privileged: true
+
   # pgvecto-rs vector store
   pgvecto-rs:
     image: tensorchord/pgvecto-rs:pg16-v0.3.0
@@ -1066,7 +1056,7 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
-    privileged: true
+
   # Chroma vector database
   chroma:
     image: ghcr.io/chroma-core/chroma:0.5.20
@@ -1100,7 +1090,6 @@ services:
       MODE: mini
     ports:
       - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
-    privileged: true
     healthcheck:
       test:
         [
@@ -1217,7 +1206,7 @@ services:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
     networks:
       - opensearch-net
-    privileged: true
+
   opensearch-dashboards:
     container_name: opensearch-dashboards
     image: opensearchproject/opensearch-dashboards:latest
@@ -1316,7 +1305,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 50
-    privileged: true
+
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
   kibana:

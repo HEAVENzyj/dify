@@ -872,7 +872,6 @@ services:
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: ["/docker-entrypoint.sh"]
     command: ["tail", "-f", "/dev/null"]
-    privileged: true
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -956,7 +955,7 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-  privileged: true
+    privileged: true
   # The Couchbase vector store.
   couchbase-server:
     build: ./couchbase-server

@@ -112,6 +112,7 @@ ENV/
 env.bak/
 venv.bak/
 .conda/
+!docker/.env
 
 # Spyder project settings
 .spyderproject

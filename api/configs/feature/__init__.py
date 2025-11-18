@@ -113,6 +113,21 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=10.0,
     )
 
+    CODE_EXECUTION_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the code execution HTTP client",
+        default=100,
+    )
+
+    CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the code execution HTTP client",
+        default=20,
+    )
+
+    CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle connections (set to None to disable)",
+        default=5.0,
+    )
+
     CODE_MAX_NUMBER: PositiveInt = Field(
         description="Maximum allowed numeric value in code execution",
         default=9223372036854775807,
@@ -135,7 +150,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
         description="Maximum allowed length for strings in code execution",
-        default=80000,
+        default=400_000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
@@ -153,6 +168,38 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=1000,
     )
 
+    CODE_EXECUTION_SSL_VERIFY: bool = Field(
+        description="Enable or disable SSL verification for code execution requests",
+        default=True,
+    )
+
+
+class TriggerConfig(BaseSettings):
+    """
+    Configuration for trigger
+    """
+
+    WEBHOOK_REQUEST_BODY_MAX_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for webhook request bodies in bytes",
+        default=10485760,
+    )
+
+
+class AsyncWorkflowConfig(BaseSettings):
+    """
+    Configuration for async workflow
+    """
+
+    ASYNC_WORKFLOW_SCHEDULER_GRANULARITY: int = Field(
+        description="Granularity for async workflow scheduler, "
+        "sometime, few users could block the queue due to some time-consuming tasks, "
+        "to avoid this, workflow can be suspended if needed, to achieve"
+        "this, a time-based checker is required, every granularity seconds, "
+        "the checker will check the workflow queue and suspend the workflow",
+        default=120,
+        ge=1,
+    )
+
 
 class PluginConfig(BaseSettings):
     """
@@ -167,6 +214,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
+    )
+
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -238,6 +290,8 @@ class EndpointConfig(BaseSettings):
         description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
+    TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
+
 
 class FileAccessConfig(BaseSettings):
     """
@@ -306,11 +360,41 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
+        description=(
+            "Comma-separated list of file extensions that are blocked from upload. "
+            "Extensions should be lowercase without dots (e.g., 'exe,bat,sh,dll'). "
+            "Empty by default to allow all file types."
+        ),
+        validation_alias=AliasChoices("UPLOAD_FILE_EXTENSION_BLACKLIST"),
+        default="",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def UPLOAD_FILE_EXTENSION_BLACKLIST(self) -> set[str]:
+        """
+        Parse and return the blacklist as a set of lowercase extensions.
+        Returns an empty set if no blacklist is configured.
+        """
+        if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
+            return set()
+        return {
+            ext.strip().lower().strip(".")
+            for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
+            if ext.strip()
+        }
+
 
 class HttpConfig(BaseSettings):
     """
     HTTP-related configurations for the application
     """
+
+    COOKIE_DOMAIN: str = Field(
+        description="Explicit cookie domain for console/service cookies when sharing across subdomains",
+        default="",
+    )
 
     API_COMPRESSION_ENABLED: bool = Field(
         description="Enable or disable gzip compression for HTTP responses",
@@ -342,11 +426,11 @@ class HttpConfig(BaseSettings):
     )
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: int = Field(
-        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=60
+        ge=1, description="Maximum read timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = Field(
-        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=20
+        ge=1, description="Maximum write timeout in seconds for HTTP requests", default=600
     )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
@@ -402,6 +486,21 @@ class HttpConfig(BaseSettings):
     SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
         description="The default write timeout period used for network requests (SSRF)",
         default=5,
+    )
+
+    SSRF_POOL_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of concurrent connections for the SSRF HTTP client",
+        default=100,
+    )
+
+    SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of persistent keep-alive connections for the SSRF HTTP client",
+        default=20,
+    )
+
+    SSRF_POOL_KEEPALIVE_EXPIRY: PositiveFloat | None = Field(
+        description="Keep-alive expiry in seconds for idle SSRF connections (set to None to disable)",
+        default=5.0,
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
@@ -508,7 +607,7 @@ class UpdateConfig(BaseSettings):
 
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
-        # 100KB
+        # 1000 KiB
         1024_000,
         description="Maximum size for variable to trigger final truncation.",
     )
@@ -542,14 +641,14 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
-    WORKFLOW_PARALLEL_DEPTH_LIMIT: PositiveInt = Field(
-        description="Maximum allowed depth for nested parallel executions",
-        default=3,
-    )
-
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
+    )
+
+    TEMPLATE_TRANSFORM_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters allowed in Template Transform node output",
+        default=400_000,
     )
 
     # GraphEngine Worker Pool Configuration
@@ -736,7 +835,7 @@ class MailConfig(BaseSettings):
 
     MAIL_TEMPLATING_TIMEOUT: int = Field(
         description="""
-        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates. 
+        Timeout for email templating in seconds. Used to prevent infinite loops in malicious templates.
         Only available in sandbox mode.""",
         default=3,
     )
@@ -875,6 +974,11 @@ class DataSetConfig(BaseSettings):
         default=True,
     )
 
+    DATASET_MAX_SEGMENTS_PER_REQUEST: NonNegativeInt = Field(
+        description="Maximum number of segments for dataset segments API (0 for unlimited)",
+        default=0,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
@@ -949,6 +1053,44 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",
         default=True,
+    )
+    ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: bool = Field(
+        description="Enable workflow schedule poller task",
+        default=True,
+    )
+    WORKFLOW_SCHEDULE_POLLER_INTERVAL: int = Field(
+        description="Workflow schedule poller interval in minutes",
+        default=1,
+    )
+    WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: int = Field(
+        description="Maximum number of schedules to process in each poll batch",
+        default=100,
+    )
+    WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
+        description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
+        default=0,
+    )
+
+    # Trigger provider refresh (simple version)
+    ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
+        description="Enable trigger provider refresh poller",
+        default=True,
+    )
+    TRIGGER_PROVIDER_REFRESH_INTERVAL: int = Field(
+        description="Trigger provider refresh poller interval in minutes",
+        default=1,
+    )
+    TRIGGER_PROVIDER_REFRESH_BATCH_SIZE: int = Field(
+        description="Max trigger subscriptions to process per tick",
+        default=200,
+    )
+    TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
+        description="Proactive credential refresh threshold in seconds",
+        default=180,
+    )
+    TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
+        description="Proactive subscription refresh threshold in seconds",
+        default=60 * 60,
     )
 
 
@@ -1048,7 +1190,7 @@ class AccountConfig(BaseSettings):
 
 
 class WorkflowLogConfig(BaseSettings):
-    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=False, description="Enable workflow run log cleanup")
     WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
@@ -1067,12 +1209,21 @@ class SwaggerUIConfig(BaseSettings):
     )
 
 
+class TenantIsolatedTaskQueueConfig(BaseSettings):
+    TENANT_ISOLATED_TASK_CONCURRENCY: int = Field(
+        description="Number of tasks allowed to be delivered concurrently from isolated queue per tenant",
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    TriggerConfig,
+    AsyncWorkflowConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,
@@ -1091,6 +1242,7 @@ class FeatureConfig(
     RagEtlConfig,
     RepositoryConfig,
     SecurityConfig,
+    TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
